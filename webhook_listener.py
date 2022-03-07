@@ -44,13 +44,13 @@ def validate_signature(payload, secret, signature_header):
     # Borrowed at 
     #     https://gist.github.com/andrewfraley/0229f59a11d76373f11b5d9d8c6809bc
     sha_name, github_signature = signature_header.split('=')
-    if sha_name != 'sha1':
+    if sha_name != 'sha256':
         print('ERROR: X-Hub-Signature in payload headers was not sha1=****')
         return False
       
     # Create our own signature
-    payload = json.dumps(payload).encode('utf-8')
-    local_signature = hmac.new(secret.encode('utf-8'), msg=payload, digestmod=hashlib.sha1)
+    # payload = json.dumps(payload).encode('utf-8')
+    local_signature = hmac.new(secret.encode('utf-8'), msg=payload, digestmod=hashlib.sha256)
     print(f"LOCAL:  {local_signature.hexdigest()}")
     print(f"REMOTE: {github_signature}")
     # See if they match
@@ -78,13 +78,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         print(self.headers)
         
         length = int(self.headers['Content-Length'])
-        payload = json.loads(self.rfile.read(length))
-        # if validate_signature(payload, SECRET, signature_header=self.headers["X-Hub-Signature"]):
-        #     print("Correct secret")
-        # else:
-        #     print("incorrect secret")
-        #     self.send_response(code=400)
-        #     return self.wfile.write(json.dumps({"result": "incorrect secret"}).encode('utf-8'))
+        # payload = json.loads(self.rfile.read(length))
+        payload = self.rfile.read(length)
+        if validate_signature(payload, SECRET, signature_header=self.headers["X-Hub-Signature-256"]):
+            print("Correct secret")
+        else:
+            print("incorrect secret")
+            self.send_response(code=400)
+            return self.wfile.write(json.dumps({"result": "incorrect secret"}).encode('utf-8'))
         self.send_header('Content-type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
@@ -104,10 +105,11 @@ parser.add_argument('-d', '--dir', help='Path to execute git pull command', type
 parser.add_argument('-s', '--secret', help='GitHub secret string', type=str, default=SECRET)
 args = parser.parse_args()
 
-h = hashlib.new('sha256')
-h.update(bytes(SECRET.encode("UTF-8")))
-SECRET = h.hexdigest()
+# h = hashlib.new('sha1')
+# h.update(bytes(SECRET.encode("UTF-8")))
+# SECRET = h.hexdigest()
 
+SECRET = args.secret
 PORT = args.port
 PATH = args.dir
 
