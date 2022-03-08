@@ -8,12 +8,13 @@ Starts a constantly running web server that listens for a POST request and autom
 
 `-d` — directory with github repo to update from server
 `-p` — port to listen
-`-s` — [OPTIONAL] a secret string for identification
+`-s` — [OPTIONAL] a secret string for GitHub webhook identification
+`-s` — [OPTIONAL] a service name that will be restarted after pull
 
 ```
 ~$git pull git@github.com:TinKurbatoff/github-webhook-autopull.git
 ~$cd github-webhook-autopull 
-~$nohup python3 webhook_listener.py -d /home/user/github_repo -p 9007 [-s <secret>] &
+~$nohup python3 webhook_listener.py -d /home/user/github_repo -p 9007 [-s <secret>] [-r <some.service>] &
 
 ```
 

@@ -17,12 +17,12 @@ import hashlib
 PATH = "."
 PORT = 9007
 SECRET = ""
+SERVICE = ""
 
 
-async def git_pull(path):
+async def git_pull(cmd):
     """ Executes `git pull` command in specified directory """
     result = {"stdout": "", "stderr": ""}
-    cmd = f"cd {path} && git pull"
     proc = await asyncio.create_subprocess_shell(
         cmd,
         stdout=asyncio.subprocess.PIPE,
@@ -99,7 +99,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 return self.wfile.write(json.dumps({"result": "incorrect secret"}).encode('utf-8'))
             
             # Call git pull request
-            sResponse = asyncio.run(git_pull(path=PATH))
+            cmd = f"cd {PATH} && git pull"
+            if SERVICE:
+                cmd = f"{cmd} && sudo /bin/systemctl restart {SERVICE}"
+            sResponse = asyncio.run(git_pull(cmd=cmd))
             if sResponse["stderr"]:
                 # There is an error while processing git pull
                 self.send_response(code=400)
@@ -118,11 +121,13 @@ parser = argparse.ArgumentParser(description='This mini-server listens for GitHu
 parser.add_argument('-p', '--port', help='Port running the server', type=int, default=PORT)
 parser.add_argument('-d', '--dir', help='Path to execute git pull command', type=str, default=PATH)
 parser.add_argument('-s', '--secret', help='GitHub secret string', type=str, default=SECRET)
+parser.add_argument('-r', '--restart', help='Restart service if needed', type=str, default=SERVICE)
 args = parser.parse_args()
 
 SECRET = args.secret
 PORT = args.port
 PATH = args.dir
+SERVICE = args.restart
 
 server = http.server.HTTPServer(('', PORT), Handler)
 print(f"Listening to port: {PORT}")
