@@ -49,13 +49,12 @@ def validate_signature(payload, secret, signature_header):
         return False
       
     # Create our own signature
-    # payload = json.dumps(payload).encode('utf-8')
     local_signature = hmac.new(secret.encode('utf-8'), msg=payload, digestmod=hashlib.sha256)
     print(f"LOCAL:  {local_signature.hexdigest()}")
     print(f"REMOTE: {github_signature}")
     # See if they match
-    # return hmac.compare_digest(local_signature.hexdigest(), github_signature)  # Slow compare for safety
-    return local_signature.hexdigest() == github_signature
+    return hmac.compare_digest(local_signature.hexdigest(), github_signature)  # Slow compare for safety
+    # return local_signature.hexdigest() == github_signature
     
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -77,26 +76,33 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         print('GET %s (from client %s)' % (self.path, self.client_address))
         print(self.headers)
         
-        length = int(self.headers['Content-Length'])
-        # payload = json.loads(self.rfile.read(length))
-        payload = self.rfile.read(length)
-        if validate_signature(payload, SECRET, signature_header=self.headers["X-Hub-Signature-256"]):
-            print("Correct secret")
-        else:
-            print("incorrect secret")
-            self.send_response(code=400)
-            return self.wfile.write(json.dumps({"result": "incorrect secret"}).encode('utf-8'))
-        self.send_header('Content-type', 'application/json')
+        try:
+            length = int(self.headers['Content-Length'] or 0)
+            # payload = json.loads(self.rfile.read(length))
+            payload = self.rfile.read(length)
+            if validate_signature(payload, SECRET, signature_header=self.headers["X-Hub-Signature-256"]):
+                print("Correct secret")
+            else:
+                print("incorrect secret")
+                self.send_response(code=400)
+                return self.wfile.write(json.dumps({"result": "incorrect secret"}).encode('utf-8'))
+            # sResponse = {}
+            sResponse = asyncio.run(git_pull(path=PATH))
+            # self.wfile.write(json.dumps(sResponse).encode('utf-8'))
+            if sResponse["stderr"]:
+                # There is an error while processing git pull
+                self.send_response(code=400)
+            else:
+                self.send_response(code=200)
+        except Exception as e:
+            print(f"[ERROR] {e}")
+            sResponse = {"message": f"{e}"} 
+        self.send_header('Content-type', 'text/html;char=utf-8')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
-        # sResponse = {}
-        sResponse = asyncio.run(git_pull(path=PATH))
-        if sResponse["stderr"]:
-            # There is an error while processing git pull
-            self.send_response(code=400)
-        else:
-            self.send_response(code=200)
-        return self.wfile.write(json.dumps(sResponse).encode('utf-8'))
+        # sResponse = {"message": ""}
+        self.wfile.write(json.dumps(sResponse).encode('utf-8'))
+        return 
 
 
 parser = argparse.ArgumentParser(description='This mini-server listens for GitHub web-hooks')
