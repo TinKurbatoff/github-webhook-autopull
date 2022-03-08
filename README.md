@@ -13,7 +13,7 @@ PROFIT!!
 
 ----
 
-To setup a webhoot at your repository:
+To setup a webhook at your repository:
 
 1. Navigate to 
 
