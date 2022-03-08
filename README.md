@@ -27,3 +27,18 @@ To setup a webhook at your repository:
 3. Use the following settings (secret string is on you):
 
 ![image](https://user-images.githubusercontent.com/48193889/157140624-366fa886-e046-4835-97f9-e4dfa768687e.png)
+
+4. If you are using nGinx (like me):
+
+```
+...
+    location /webhook/ {
+            proxy_pass_header Server;
+            proxy_redirect off;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Scheme $scheme;
+            include proxy_params;
+            proxy_pass http://127.0.0.1:9007/;    
+        }
+...
+```
