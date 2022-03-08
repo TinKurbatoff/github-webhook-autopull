@@ -6,10 +6,10 @@
 This is a very simple yet convenient tool for catching webhooks from GitHub. Once the call is received, the script executes a command to update the local repository.
 Starts a constantly running web server that listens for a POST request and automatically creates a pull request in the specified directory.
 
-`-d` — directory with github repo to update from server
-`-p` — port to listen
-`-s` — [OPTIONAL] a secret string for GitHub webhook identification
-`-r` — [OPTIONAL] a service name that will be restarted after pull
+`-d` — directory with github repo to update from server <br />
+`-p` — port to listen <br />
+`-s` — [OPTIONAL] a secret string for GitHub webhook identification <br />
+`-r` — [OPTIONAL] a service name that will be restarted after pull <br />
 
 ```
 ~$git pull git@github.com:TinKurbatoff/github-webhook-autopull.git
