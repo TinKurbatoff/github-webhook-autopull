@@ -43,9 +43,12 @@ def validate_signature(payload, secret, signature_header):
     # Get the signature from the payload
     # Borrowed at 
     #     https://gist.github.com/andrewfraley/0229f59a11d76373f11b5d9d8c6809bc
-    sha_name, github_signature = signature_header.split('=')
-    if sha_name != 'sha256':
-        print('ERROR: X-Hub-Signature in payload headers was not sha1=****')
+    if signature_header:
+        sha_name, github_signature = signature_header.split('=')
+        if sha_name != 'sha256':
+            print('ERROR: X-Hub-Signature in payload headers was not sha1=****')
+            return False
+    else:
         return False
       
     # Create our own signature
@@ -60,6 +63,12 @@ def validate_signature(payload, secret, signature_header):
 class Handler(http.server.SimpleHTTPRequestHandler):
     # A new Handler is created for every incoming request tho do_XYZ
     # methods correspond to different HTTP methods.
+
+    def add_headers(self):
+        self.send_header('Content-type', 'text/html;char=utf-8')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        return
 
     def do_GET(self):
         self.send_response(200)
@@ -78,11 +87,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         
         try:
             length = int(self.headers['Content-Length'] or 0)
-            
-            # Add headers
-            self.send_header('Content-type', 'text/html;char=utf-8')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
 
             # Validate signature
             payload = self.rfile.read(length)
@@ -91,6 +95,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             else:
                 print("incorrect secret")
                 self.send_response(code=400)
+                self.add_headers()
                 return self.wfile.write(json.dumps({"result": "incorrect secret"}).encode('utf-8'))
             
             # Call git pull request
@@ -103,8 +108,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         except Exception as e:
             print(f"[ERROR] {e}")
             sResponse = {"message": f"{e}"} 
-        self.wfile.write(json.dumps(sResponse).encode('utf-8'))
-        return 
+        print(f"sResponse: {sResponse}")
+        # Add headers
+        self.add_headers()
+        return self.wfile.write(json.dumps(sResponse).encode('utf-8'))
 
 
 parser = argparse.ArgumentParser(description='This mini-server listens for GitHub web-hooks')

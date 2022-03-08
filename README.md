@@ -6,7 +6,9 @@ Starts a constantly running web server that listens for a POST request and autom
 ```
 ~$git pull git@github.com:TinKurbatoff/github-webhook-autopull.git
 ~$cd github-webhook-autopull 
-~$nohup python3 webhook_listener.py -d /home/user/github_repo -p 9007 &
+~$nohup python3 webhook_listener.py -d /home/user/github_repo -p 9007 [-s <secret>]&
 ```
 
 PROFIT!!
+
+
