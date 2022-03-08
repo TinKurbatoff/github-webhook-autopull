@@ -78,7 +78,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         
         try:
             length = int(self.headers['Content-Length'] or 0)
-            # payload = json.loads(self.rfile.read(length))
+            
+            # Add headers
+            self.send_header('Content-type', 'text/html;char=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+
+            # Validate signature
             payload = self.rfile.read(length)
             if validate_signature(payload, SECRET, signature_header=self.headers["X-Hub-Signature-256"]):
                 print("Correct secret")
@@ -86,9 +92,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 print("incorrect secret")
                 self.send_response(code=400)
                 return self.wfile.write(json.dumps({"result": "incorrect secret"}).encode('utf-8'))
-            # sResponse = {}
+            
+            # Call git pull request
             sResponse = asyncio.run(git_pull(path=PATH))
-            # self.wfile.write(json.dumps(sResponse).encode('utf-8'))
             if sResponse["stderr"]:
                 # There is an error while processing git pull
                 self.send_response(code=400)
@@ -97,10 +103,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         except Exception as e:
             print(f"[ERROR] {e}")
             sResponse = {"message": f"{e}"} 
-        self.send_header('Content-type', 'text/html;char=utf-8')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.end_headers()
-        # sResponse = {"message": ""}
         self.wfile.write(json.dumps(sResponse).encode('utf-8'))
         return 
 
@@ -110,10 +112,6 @@ parser.add_argument('-p', '--port', help='Port running the server', type=int, de
 parser.add_argument('-d', '--dir', help='Path to execute git pull command', type=str, default=PATH)
 parser.add_argument('-s', '--secret', help='GitHub secret string', type=str, default=SECRET)
 args = parser.parse_args()
-
-# h = hashlib.new('sha1')
-# h.update(bytes(SECRET.encode("UTF-8")))
-# SECRET = h.hexdigest()
 
 SECRET = args.secret
 PORT = args.port
