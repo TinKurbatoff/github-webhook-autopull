@@ -9,7 +9,7 @@ Starts a constantly running web server that listens for a POST request and autom
 `-d` — directory with github repo to update from server
 `-p` — port to listen
 `-s` — [OPTIONAL] a secret string for GitHub webhook identification
-`-s` — [OPTIONAL] a service name that will be restarted after pull
+`-r` — [OPTIONAL] a service name that will be restarted after pull
 
 ```
 ~$git pull git@github.com:TinKurbatoff/github-webhook-autopull.git
