@@ -13,6 +13,13 @@ import argparse
 import json
 import hmac
 import hashlib
+import logging
+
+# Gets or creates a logger
+logger = logging.getLogger(__name__)  
+logging.basicConfig(level=logging.INFO, 
+                    format='%(asctime)s : %(levelname)s : %(name)s : %(message)s')
+
 
 PATH = "."
 PORT = 9007
@@ -29,13 +36,13 @@ async def git_pull(cmd):
         stderr=asyncio.subprocess.PIPE)
     stdout, stderr = await proc.communicate()
 
-    print(f'[{cmd!r} exited with {proc.returncode}]')
+    logger.info(f'[{cmd!r} exited with {proc.returncode}]')
     if stdout:
         result["stdout"] = stdout.decode()
-        print(f'[stdout]\n{result["stdout"]}')
+        logger.info(f'[stdout]\n{result["stdout"]}')
     if stderr:
         result["stderr"] = stderr.decode()
-        print(f'[stderr]\n{result["stderr"]}')
+        logger.info(f'[stderr]\n{result["stderr"]}')
     return result
 
 
@@ -46,15 +53,15 @@ def validate_signature(payload, secret, signature_header):
     if signature_header:
         sha_name, github_signature = signature_header.split('=')
         if sha_name != 'sha256':
-            print('ERROR: X-Hub-Signature in payload headers was not sha1=****')
+            logger.info('ERROR: X-Hub-Signature in payload headers was not sha1=****')
             return False
     else:
         return False
       
     # Create our own signature
     local_signature = hmac.new(secret.encode('utf-8'), msg=payload, digestmod=hashlib.sha256)
-    print(f"LOCAL:  {local_signature.hexdigest()}")
-    print(f"REMOTE: {github_signature}")
+    logger.info(f"LOCAL:  {local_signature.hexdigest()}")
+    logger.info(f"REMOTE: {github_signature}")
     # See if they match
     return hmac.compare_digest(local_signature.hexdigest(), github_signature)  # Slow compare for safety
     # return local_signature.hexdigest() == github_signature
@@ -81,9 +88,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         global PATH
         global SECRET
-        print('-----------------------')
-        print('GET %s (from client %s)' % (self.path, self.client_address))
-        print(self.headers)
+        logger.info('-----------------------')
+        logger.info('GET %s (from client %s)' % (self.path, self.client_address))
+        logger.info(self.headers)
         
         try:
             length = int(self.headers['Content-Length'] or 0)
@@ -91,9 +98,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             # Validate signature
             payload = self.rfile.read(length)
             if validate_signature(payload, SECRET, signature_header=self.headers["X-Hub-Signature-256"]):
-                print("Correct secret")
+                logger.info("Correct secret")
             else:
-                print("incorrect secret")
+                logger.info("incorrect secret")
                 self.send_response(code=400)
                 self.add_headers()
                 return self.wfile.write(json.dumps({"result": "incorrect secret"}).encode('utf-8'))
@@ -109,9 +116,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             else:
                 self.send_response(code=200)
         except Exception as e:
-            print(f"[ERROR] {e}")
+            logger.info(f"[ERROR] {e}")
             sResponse = {"message": f"{e}"} 
-        print(f"sResponse: {sResponse}")
+        logger.info(f"sResponse: {sResponse}")
         # Add headers
         self.add_headers()
         return self.wfile.write(json.dumps(sResponse).encode('utf-8'))
@@ -130,5 +137,5 @@ PATH = args.dir
 SERVICE = args.restart
 
 server = http.server.HTTPServer(('', PORT), Handler)
-print(f"Listening to port: {PORT}")
+logger.info(f"Listening to port: {PORT}")
 server.serve_forever()
