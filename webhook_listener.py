@@ -72,12 +72,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     # methods correspond to different HTTP methods.
 
     def add_headers(self):
+        """ Adds default headers for a proper response  """
         self.send_header('Content-type', 'text/html;char=utf-8')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
         return
 
     def do_GET(self):
+        """ Serves GET requests from everywhere for validation  """
         self.send_response(200)
         # this below is the new header
         self.send_header('Content-type', 'text/html')
@@ -86,8 +88,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(b"<html><H3>GitHub listener works ok.</H3></html>")
 
     def do_POST(self):
+        """ Serves POST requests from GitHub """
         global PATH
         global SECRET
+        response_code = 200  # Default response code
         logger.info('-----------------------')
         logger.info('GET %s (from client %s)' % (self.path, self.client_address))
         logger.info(self.headers)
@@ -100,7 +104,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if validate_signature(payload, SECRET, signature_header=self.headers["X-Hub-Signature-256"]):
                 logger.info("Correct secret")
             else:
-                logger.info("incorrect secret")
+                logger.warning("Incorrect secret!")
                 self.send_response(code=400)
                 self.add_headers()
                 return self.wfile.write(json.dumps({"result": "incorrect secret"}).encode('utf-8'))
@@ -109,17 +113,21 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             cmd = f"cd {PATH} && git pull"
             if SERVICE:
                 cmd = f"{cmd} && sudo /bin/systemctl restart {SERVICE}"
+            logger.info(f"...executing: `{cmd}`")
             sResponse = asyncio.run(git_pull(cmd=cmd))
+            logger.info(f"Result (json): `{sResponse}`")
             if sResponse["stderr"]:
                 # There is an error while processing git pull
-                self.send_response(code=400)
-            else:
-                self.send_response(code=200)
+                response_code = 400
+                
         except Exception as e:
             logger.info(f"[ERROR] {e}")
             sResponse = {"message": f"{e}"} 
         logger.info(f"sResponse: {sResponse}")
         # Add headers
+        logger.info(f"Response code: {response_code}")
+        self.send_response(code=200)
+        logger.info("Adding headers to response")
         self.add_headers()
         return self.wfile.write(json.dumps(sResponse).encode('utf-8'))
 
