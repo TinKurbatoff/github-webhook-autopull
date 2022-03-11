@@ -126,7 +126,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         logger.info(f"sResponse: {sResponse}")
         # Add headers
         logger.info(f"Response code: {response_code}")
-        self.send_response(code=200)
+        self.send_response(code=response_code)
         logger.info("Adding headers to response")
         self.add_headers()
         return self.wfile.write(json.dumps(sResponse).encode('utf-8'))
