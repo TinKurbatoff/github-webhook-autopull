@@ -35,6 +35,7 @@ async def git_pull(cmd):
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE)
     stdout, stderr = await proc.communicate()
+    return_code = proc.returncode
 
     logger.info(f'[{cmd!r} exited with {proc.returncode}]')
     if stdout:
@@ -42,7 +43,8 @@ async def git_pull(cmd):
         logger.info(f'[stdout]\n{result["stdout"]}')
     if stderr:
         result["stderr"] = stderr.decode()
-        logger.info(f'[stderr]\n{result["stderr"]}')
+        result['error_code'] = return_code
+        logger.info(f'[stderr] (EC={return_code})\n{result["stderr"]}')
     return result
 
 
@@ -118,7 +120,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             logger.info(f"Result (json): `{sResponse}`")
             if sResponse["stderr"]:
                 # There is an error while processing git pull
-                response_code = 400
+                if sResponse['error_code'] != 0:
+                    # Return error only if error code is not zero
+                    response_code = 400
                 
         except Exception as e:
             logger.info(f"[ERROR] {e}")
