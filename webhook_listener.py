@@ -25,6 +25,7 @@ PATH = "."
 PORT = 9007
 SECRET = ""
 SERVICE = ""
+MIGRATIONS = False
 
 
 async def git_pull(cmd):
@@ -113,6 +114,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             
             # Call git pull request
             cmd = f"cd {PATH} && git pull"
+            if MIGRATIONS:
+                logger.info("[MIGRATIONS] Applying — true.")    
+                cmd = f"{cmd} && python3 manage.py makemigrations && python3 manage.py migrate"
             if SERVICE:
                 cmd = f"{cmd} && sudo /bin/systemctl restart {SERVICE}"
             logger.info(f"...executing: `{cmd}`")
@@ -138,6 +142,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 parser = argparse.ArgumentParser(description='This mini-server listens for GitHub web-hooks')
 parser.add_argument('-p', '--port', help='Port running the server', type=int, default=PORT)
+parser.add_argument('-m', '--migrations', help='Perform Django migrations', dest='migrations', action='store_true')
 parser.add_argument('-d', '--dir', help='Path to execute git pull command', type=str, default=PATH)
 parser.add_argument('-s', '--secret', help='GitHub secret string', type=str, default=SECRET)
 parser.add_argument('-r', '--restart', help='Restart service if needed', type=str, default=SERVICE)
@@ -147,6 +152,7 @@ SECRET = args.secret
 PORT = args.port
 PATH = args.dir
 SERVICE = args.restart
+MIGRATIONS = args.migrations
 
 server = http.server.HTTPServer(('', PORT), Handler)
 logger.info(f"Listening to port: {PORT}")
